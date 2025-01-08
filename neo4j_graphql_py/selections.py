@@ -33,8 +33,8 @@ def build_cypher_selection(initial, selections, variable_name, schema_type, reso
     # Main control flow
     if is_graphql_scalar_type(inner_schema_type):
         if custom_cypher:
-            return build_cypher_selection((f'{initial}{field_name}: apoc.cypher.runFirstColumn("{custom_cypher}", '
-                                           f'{cypher_directive_args(variable_name, head_selection, schema_type, resolve_info)}, false)'
+            return build_cypher_selection((f'{initial}{field_name}: apoc.cypher.runFirstColumnSingle("{custom_cypher}", '
+                                           f'{cypher_directive_args(variable_name, head_selection, schema_type, resolve_info)})'
                                            f'{comma_if_tail}'), **tail_params)
 
         # graphql scalar type, no custom cypher statement
@@ -51,15 +51,15 @@ def build_cypher_selection(initial, selections, variable_name, schema_type, reso
         'resolve_info': resolve_info
     }
     if custom_cypher:
-        # similar: [ x IN apoc.cypher.runFirstColumn("WITH {this} AS this MATCH (this)--(:Genre)--(o:Movie)
+        # similar: [ x IN apoc.cypher.runFirstColumnMany("WITH {this} AS this MATCH (this)--(:Genre)--(o:Movie)
         # RETURN o", {this: movie}, true) |x {.title}][1..2])
 
         field_is_list = not not getattr(field_type, 'of_type', None)
 
         return build_cypher_selection(
             (f'{initial}{field_name}: {"" if field_is_list else "head("}'
-             f'[ {nested_variable} IN apoc.cypher.runFirstColumn("{custom_cypher}", '
-             f'{cypher_directive_args(variable_name, head_selection, schema_type, resolve_info)}, true) | {nested_variable} '
+             f'[ {nested_variable} IN apoc.cypher.runFirstColumnMany("{custom_cypher}", '
+             f'{cypher_directive_args(variable_name, head_selection, schema_type, resolve_info)}) | {nested_variable} '
              f'{{{build_cypher_selection(**nested_params)}}}]'
              f'{"" if field_is_list else ")"}{skip_limit} {comma_if_tail}'), **tail_params)
 
