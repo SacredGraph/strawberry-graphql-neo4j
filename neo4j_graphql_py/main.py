@@ -59,7 +59,7 @@ def cypher_query(context, resolve_info, first=-1, offset=0, _id=None, **kwargs):
     cyp_dir = cypher_directive(resolve_info.schema.query_type, resolve_info.field_name)
     if cyp_dir:
         custom_cypher = cyp_dir.get('statement')
-        query = (f'WITH apoc.cypher.runFirstColumn("{custom_cypher}", {arg_string}, true) AS x '
+        query = (f'WITH apoc.cypher.runFirstColumnMany("{custom_cypher}", {arg_string}) AS x '
                  f'UNWIND x AS {variable_name} RETURN {variable_name} '
                  f'{{{build_cypher_selection("", selections, variable_name, schema_type, resolve_info)}}} '
                  f'AS {variable_name} {outer_skip_limit}')
