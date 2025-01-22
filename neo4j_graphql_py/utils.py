@@ -19,11 +19,14 @@ def make_executable_schema(schema_definition, resolvers):
             if field_type is GraphQLScalarType:
                 field_type.fields[field_name].resolve = resolvers[type_name][field_name]
                 continue
+                
+            if not hasattr(field_type, 'fields'):
+                continue
 
             field = field_type.fields[field_name]
             field.resolve = resolvers[type_name][field_name]
 
-        if not field_type.fields:
+        if not hasattr(field_type, 'fields') or not field_type.fields:
             continue
 
         for remaining in field_type.fields:
