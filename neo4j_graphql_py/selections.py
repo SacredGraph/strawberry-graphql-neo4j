@@ -70,6 +70,9 @@ def build_cypher_selection(initial, selections, variable_name, schema_type, reso
     rel_direction = rel.get('direction')
     subquery_args = inner_filter_params(head_selection)
 
+    if rel_type is None:
+        return build_cypher_selection((f"{initial} {field_name}: {'head(' if not is_array_type(field_type) else ''}[{field_name} in {variable_name}.{field_name} | {field_name} {{{ build_cypher_selection( initial='', selections=head_selection.selection_set.selections, variable_name=field_name, schema_type=inner_schema_type, resolve_info=resolve_info) }}}]{')' if not is_array_type(field_type) else ''} {comma_if_tail}"), **tail_params)
+
     return build_cypher_selection(
         (f"{initial}{field_name}: {'head(' if not is_array_type(field_type) else ''}"
          f"[({variable_name}){'<' if rel_direction in ['in', 'IN'] else ''}"
