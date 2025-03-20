@@ -5,7 +5,7 @@ from typing import Any
 from pydash import find, reduce_
 from graphql import GraphQLResolveInfo, GraphQLScalarType, parse, build_ast_schema
 
-logger = logging.getLogger('neo4j_graphql_py')
+logger = logging.getLogger("neo4j_graphql_py")
 
 
 def make_executable_schema(schema_definition, resolvers):
@@ -19,14 +19,14 @@ def make_executable_schema(schema_definition, resolvers):
             if field_type is GraphQLScalarType:
                 field_type.fields[field_name].resolve = resolvers[type_name][field_name]
                 continue
-                
-            if not hasattr(field_type, 'fields'):
+
+            if not hasattr(field_type, "fields"):
                 continue
 
             field = field_type.fields[field_name]
             field.resolve = resolvers[type_name][field_name]
 
-        if not hasattr(field_type, 'fields') or not field_type.fields:
+        if not hasattr(field_type, "fields") or not field_type.fields:
             continue
 
         for remaining in field_type.fields:
@@ -52,12 +52,22 @@ def parse_args(args, variable_values):
     if args is None or len(args) == 0:
         return {}
 
-    return {arg.name.value: (
-        int(arg.value.value) if arg.value.kind == 'int_value'
-        else float(arg.value.value) if arg.value.kind == 'float_value'
-        else variable_values[arg.name.value] if arg.value.kind == 'variable'
-        else arg.value.value)
-        for arg in args}
+    return {
+        arg.name.value: (
+            int(arg.value.value)
+            if arg.value.kind == "int_value"
+            else (
+                float(arg.value.value)
+                if arg.value.kind == "float_value"
+                else (
+                    variable_values[arg.name.value]
+                    if arg.value.kind == "variable"
+                    else arg.value.value
+                )
+            )
+        )
+        for arg in args
+    }
 
 
 def get_default_arguments(field_name, schema_type):
@@ -72,35 +82,50 @@ def cypher_directive_args(variable, head_selection, schema_type, resolve_info):
     query_args = parse_args(head_selection.arguments, resolve_info.variable_values)
     default_args.update(query_args)
     args = re.sub(r"\"([^(\")]+)\":", "\\1:", json.dumps(default_args))
-    return f'{{this: {variable}{args[1:]}' if args == "{}" else f'{{this: {variable}, {args[1:]}'
+    return (
+        f"{{this: {variable}{args[1:]}"
+        if args == "{}"
+        else f"{{this: {variable}, {args[1:]}"
+    )
 
 
 def is_mutation(resolve_info):
-    return resolve_info.operation.operation == 'mutation' or resolve_info.operation.operation.value == 'mutation'
+    return (
+        resolve_info.operation.operation == "mutation"
+        or resolve_info.operation.operation.value == "mutation"
+    )
 
 
 def is_add_relationship_mutation(resolve_info):
-    return (is_mutation(resolve_info)
-            and
-            (resolve_info.field_name.startswith('add')
-             or resolve_info.field_name.startswith('Add'))
-            and
-            len(mutation_meta_directive(resolve_info.schema.mutaiton_type, resolve_info.field_name)) > 0
+    return (
+        is_mutation(resolve_info)
+        and (
+            resolve_info.field_name.startswith("add")
+            or resolve_info.field_name.startswith("Add")
+        )
+        and len(
+            mutation_meta_directive(
+                resolve_info.schema.mutation_type, resolve_info.field_name
             )
+        )
+        > 0
+    )
 
 
 def type_identifiers(return_type):
     type_name = str(inner_type(return_type))
-    return {'variable_name': low_first_letter(type_name),
-            'type_name': type_name}
+    return {"variable_name": low_first_letter(type_name), "type_name": type_name}
 
 
 def is_graphql_scalar_type(field_type):
-    return type(field_type).__name__ == 'GraphQLScalarType' or type(field_type).__name__ == 'GraphQLEnumType'
+    return (
+        type(field_type).__name__ == "GraphQLScalarType"
+        or type(field_type).__name__ == "GraphQLEnumType"
+    )
 
 
 def is_array_type(field_type):
-    return str(field_type).startswith('[')
+    return str(field_type).startswith("[")
 
 
 def low_first_letter(word):
@@ -108,13 +133,20 @@ def low_first_letter(word):
 
 
 def inner_type(field_type):
-    return inner_type(field_type.of_type) if getattr(field_type, 'of_type', None) else field_type
+    return (
+        inner_type(field_type.of_type)
+        if getattr(field_type, "of_type", None)
+        else field_type
+    )
 
 
 def directive_with_args(directive_name, *args):
     def fun(schema_type, field_name):
         def field_directive(schema_type, field_name, directive_name):
-            return find(schema_type.fields[field_name].ast_node.directives, lambda d: d.name.value == directive_name)
+            return find(
+                schema_type.fields[field_name].ast_node.directives,
+                lambda d: d.name.value == directive_name,
+            )
 
         def directive_argument(directive, name):
             return find(directive.arguments, lambda a: a.name.value == name).value.value
@@ -128,16 +160,21 @@ def directive_with_args(directive_name, *args):
     return fun
 
 
-cypher_directive = directive_with_args('cypher', 'statement')
-relation_directive = directive_with_args('relation', 'name', 'direction')
-mutation_meta_directive = directive_with_args('MutationMeta', 'relationship', 'from', 'to')
+cypher_directive = directive_with_args("cypher", "statement")
+relation_directive = directive_with_args("relation", "name", "direction")
+mutation_meta_directive = directive_with_args(
+    "MutationMeta", "relationship", "from", "to"
+)
 
 
 def inner_filter_params(selections):
     query_params = {}
     if len(selections.arguments) > 0:
-        query_params = {arg.name.value: arg.value.value for arg in selections.arguments if
-                        arg.name.value not in ['first', 'offset']}
+        query_params = {
+            arg.name.value: arg.value.value
+            for arg in selections.arguments
+            if arg.name.value not in ["first", "offset"]
+        }
     # FIXME: support IN for multiple values -> WHERE
     query_params = re.sub(r"\"([^(\")]+)\":", "\\1:", json.dumps(query_params))
 
@@ -147,18 +184,25 @@ def inner_filter_params(selections):
 def argument_value(selection, name, variable_values):
     arg = find(selection.arguments, lambda argument: argument.name.value == name)
     return (
-        None if arg is None
-        else variable_values[name] if getattr(arg.value, 'value', None) is None
-                                      and name in variable_values and arg.value.kind == 'variable'
-        else arg.value.value
+        None
+        if arg is None
+        else (
+            variable_values[name]
+            if getattr(arg.value, "value", None) is None
+            and name in variable_values
+            and arg.value.kind == "variable"
+            else arg.value.value
+        )
     )
 
 
 def extract_query_result(records, return_type):
     type_ident = type_identifiers(return_type)
-    variable_name = type_ident.get('variable_name')
+    variable_name = type_ident.get("variable_name")
     result = [record.get(variable_name) for record in records.data()]
-    return result if is_array_type(return_type) else result[0] if len(result) > 0 else None
+    return (
+        result if is_array_type(return_type) else result[0] if len(result) > 0 else None
+    )
 
 
 def compute_skip_limit(selection, variable_values):
@@ -167,19 +211,23 @@ def compute_skip_limit(selection, variable_values):
     if first is None and offset is None:
         return ""
     if offset is None:
-        return f'[..{first}]'
+        return f"[..{first}]"
     if first is None:
-        return f'[{offset}..]'
-    return f'[{offset}..{int(offset) + int(first)}]'
+        return f"[{offset}..]"
+    return f"[{offset}..{int(offset) + int(first)}]"
 
 
 def extract_selections(selections, fragments):
     # extract any fragment selection sets into a single array of selections
-    return reduce_(selections,
-                   lambda acc, curr:
-                   [*acc, *fragments[curr.name.value].selection_set.selections] if curr.kind == 'fragment_spread'
-                   else [*acc, curr],
-                   [])
+    return reduce_(
+        selections,
+        lambda acc, curr: (
+            [*acc, *fragments[curr.name.value].selection_set.selections]
+            if curr.kind == "fragment_spread"
+            else [*acc, curr]
+        ),
+        [],
+    )
 
 
 def fix_params_for_add_relationship_mutation(resolve_info, **kwargs):
@@ -187,22 +235,38 @@ def fix_params_for_add_relationship_mutation(resolve_info, **kwargs):
     #   let mutationMeta, fromTypeArg, toTypeArg;
     #
     try:
-        mutation_meta = mutation_meta_directive(resolve_info.mutation_type, resolve_info.field_name)
+        mutation_meta = mutation_meta_directive(
+            resolve_info.mutation_type, resolve_info.field_name
+        )
     except Exception as e:
-        raise Exception('Missing required MutationMeta directive on add relationship directive')
-    from_type = mutation_meta.get('from')
-    to_type = mutation_meta.get('to')
+        raise Exception(
+            "Missing required MutationMeta directive on add relationship directive"
+        )
+    from_type = mutation_meta.get("from")
+    to_type = mutation_meta.get("to")
 
     # TODO: need to handle one-to-one and one-to-many
     from_var = low_first_letter(from_type)
     to_var = low_first_letter(to_type)
-    from_param = resolve_info.schema.mutaiton_type.fields[resolve_info.field_name].ast_node.arguments[0].name.value[
-                 len(from_var):]
-    to_param = resolve_info.schema.mutaiton_type.fields[resolve_info.field_name].ast_node.arguments[1].name.value[
-               len(to_var):]
+    from_param = (
+        resolve_info.schema.mutation_type.fields[resolve_info.field_name]
+        .ast_node.arguments[0]
+        .name.value[len(from_var) :]
+    )
+    to_param = (
+        resolve_info.schema.mutation_type.fields[resolve_info.field_name]
+        .ast_node.arguments[1]
+        .name.value[len(to_var) :]
+    )
     kwargs[from_param] = kwargs[
-        resolve_info.schema.mutaiton_type.fields[resolve_info.field_name].ast_node.arguments[0].name.value]
+        resolve_info.schema.mutation_type.fields[resolve_info.field_name]
+        .ast_node.arguments[0]
+        .name.value
+    ]
     kwargs[to_param] = kwargs[
-        resolve_info.schema.mutaiton_type.fields[resolve_info.field_name].ast_node.arguments[1].name.value]
+        resolve_info.schema.mutation_type.fields[resolve_info.field_name]
+        .ast_node.arguments[1]
+        .name.value
+    ]
     print(kwargs)
     return kwargs
