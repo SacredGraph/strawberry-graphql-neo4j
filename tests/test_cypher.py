@@ -394,7 +394,7 @@ class TestSchema(unittest.TestCase):
                                  'AS movie SKIP 0')
         self.augmented_schema_test(graphql_query, expected_cypher_query)
 
-    def test_handle_cypher_directive_on_query_type(self):
+    def test_handle_cypher_directive_on_get_type_by_name("Query")(self):
         graphql_query = '''
         {
             GenresBySubstring(substring:"Action") {
@@ -411,7 +411,7 @@ class TestSchema(unittest.TestCase):
                                  '(genre_movies:Movie {}) | genre_movies { .title }][..3] } AS genre SKIP 0')
         self.augmented_schema_test(graphql_query, expected_cypher_query)
 
-    def test_handle_cypher_directive_on_mutation_type(self):
+    def test_handle_cypher_directive_on_get_type_by_name("Mutation")(self):
         graphql_query = '''
         mutation someMutation {
             CreateGenre(name: "Wildlife Documentary") {
@@ -424,7 +424,7 @@ class TestSchema(unittest.TestCase):
                                  '[keys(value)[0]])[0] AS genre RETURN genre { .name } AS genre SKIP 0')
         self.cypher_test(graphql_query, expected_cypher_query)
 
-    def test_create_node_mutation_type(self):
+    def test_create_node_get_type_by_name("Mutation")(self):
         graphql_query = '''
         mutation someMutation {
             CreateMovie(movieId: "12dd334d5", title:"My Super Awesome Movie", year:2018, plot:"An unending saga", poster:"www.movieposter.com/img.png", imdbRating: 1.0) {

@@ -114,7 +114,8 @@ def is_add_relationship_mutation(resolve_info):
         )
         and len(
             mutation_meta_directive(
-                resolve_info.schema.mutation_type, resolve_info.field_name
+                resolve_info.schema.get_type_by_name("Mutation"),
+                resolve_info.field_name,
             )
         )
         > 0
@@ -249,7 +250,7 @@ def fix_params_for_add_relationship_mutation(resolve_info, **kwargs):
     #
     try:
         mutation_meta = mutation_meta_directive(
-            resolve_info.mutation_type, resolve_info.field_name
+            resolve_info.get_type_by_name("Mutation"), resolve_info.field_name
         )
     except Exception as e:
         raise Exception(
@@ -262,22 +263,26 @@ def fix_params_for_add_relationship_mutation(resolve_info, **kwargs):
     from_var = low_first_letter(from_type)
     to_var = low_first_letter(to_type)
     from_param = (
-        resolve_info.schema.mutation_type.fields[resolve_info.field_name]
+        resolve_info.schema.get_type_by_name("Mutation")
+        .fields[resolve_info.field_name]
         .ast_node.arguments[0]
         .name.value[len(from_var) :]
     )
     to_param = (
-        resolve_info.schema.mutation_type.fields[resolve_info.field_name]
+        resolve_info.schema.get_type_by_name("Mutation")
+        .fields[resolve_info.field_name]
         .ast_node.arguments[1]
         .name.value[len(to_var) :]
     )
     kwargs[from_param] = kwargs[
-        resolve_info.schema.mutation_type.fields[resolve_info.field_name]
+        resolve_info.schema.get_type_by_name("Mutation")
+        .fields[resolve_info.field_name]
         .ast_node.arguments[0]
         .name.value
     ]
     kwargs[to_param] = kwargs[
-        resolve_info.schema.mutation_type.fields[resolve_info.field_name]
+        resolve_info.schema.get_type_by_name("Mutation")
+        .fields[resolve_info.field_name]
         .ast_node.arguments[1]
         .name.value
     ]

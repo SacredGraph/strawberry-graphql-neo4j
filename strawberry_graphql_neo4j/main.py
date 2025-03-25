@@ -190,7 +190,7 @@ def cypher_mutation(context, resolve_info, first=-1, offset=0, _id=None, **kwarg
         "add"
     ) or resolve_info.field_name.startswith("Add"):
         mutation_meta = mutation_meta_directive(
-            resolve_info.schema.mutation_type, resolve_info.field_name
+            resolve_info.schema.get_type_by_name("Mutation"), resolve_info.field_name
         )
         relation_name = mutation_meta.get("relationship")
         from_type = mutation_meta.get("from")
@@ -198,20 +198,20 @@ def cypher_mutation(context, resolve_info, first=-1, offset=0, _id=None, **kwarg
         to_type = mutation_meta.get("to")
         to_var = low_first_letter(to_type)
         from_param = (
-            resolve_info.schema.mutation_type.fields[resolve_info.field_name]
+            resolve_info.schema.get_type_by_name("Mutation").fields[resolve_info.field_name]
             .ast_node.arguments[0]
             .name.value[len(from_var) :]
         )
         to_param = (
-            resolve_info.schema.mutation_type.fields[resolve_info.field_name]
+            resolve_info.schema.get_type_by_name("Mutation").fields[resolve_info.field_name]
             .ast_node.arguments[1]
             .name.value[len(to_var) :]
         )
         query = (
             f"MATCH ({from_var}:{from_type} {{{from_param}: "
-            f"${resolve_info.schema.mutation_type.fields[resolve_info.field_name].ast_node.arguments[0].name.value}}}) "
+            f"${resolve_info.schema.get_type_by_name("Mutation").fields[resolve_info.field_name].ast_node.arguments[0].name.value}}}) "
             f"MATCH ({to_var}:{to_type} {{{to_param}: "
-            f"${resolve_info.schema.mutation_type.fields[resolve_info.field_name].ast_node.arguments[1].name.value}}}) "
+            f"${resolve_info.schema.get_type_by_name("Mutation").fields[resolve_info.field_name].ast_node.arguments[1].name.value}}}) "
             f"CREATE ({from_var})-[:{relation_name}]->({to_var}) "
             f"RETURN {from_var} "
             f'{{{build_cypher_selection("", selections, variable_name, schema_type, resolve_info)}}} '
