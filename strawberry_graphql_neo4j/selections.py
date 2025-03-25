@@ -36,7 +36,7 @@ def build_cypher_selection(
 
     field_type = schema_type.get_field(field_name).type
     inner_schema_type = resolve_info.schema.get_type_by_name(
-        inner_type(field_type).__name__
+        getattr(inner_type(field_type), "__name__", None)
     )
     custom_cypher = cypher_directive(schema_type, field_name).get("statement")
 
