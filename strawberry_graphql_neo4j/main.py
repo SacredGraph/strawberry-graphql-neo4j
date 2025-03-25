@@ -61,7 +61,11 @@ def neo4j_graphql(obj, context, resolve_info, debug=False, **kwargs):
                 for k, v in value.items():
                     if any([k == field.name for field in fields(klass)]):
                         if isinstance(v, (dict, list)):
-                            field_type = type_def.get_field(k).type
+                            field_type = (
+                                resolve_info.schema.get_type_by_name(klass.__name__)
+                                .get_field(k)
+                                .type
+                            )
                             if is_array_type(field_type):
                                 field_type = field_type.of_type
                             initialized_dict[k] = initialize_type(field_type, v)
