@@ -139,7 +139,7 @@ def cypher_mutation(context, resolve_info, first=-1, offset=0, _id=None, **kwarg
     types_ident = type_identifiers(resolve_info.return_type)
     type_name = types_ident.get("type_name")
     variable_name = types_ident.get("variable_name")
-    schema_type = resolve_info.schema.get_type(type_name)
+    schema_type = resolve_info.schema.get_type_by_name(type_name)
 
     filtered_field_nodes = filter_(
         resolve_info.field_nodes, lambda n: n.name.value == resolve_info.field_name
@@ -147,17 +147,23 @@ def cypher_mutation(context, resolve_info, first=-1, offset=0, _id=None, **kwarg
 
     # FIXME: how to handle multiple field_node matches
     selections = extract_selections(
-        filtered_field_nodes[0].selection_set.selections, resolve_info.fragments
+        getattr(filtered_field_nodes[0].selection_set, "selections", []),
+        getattr(resolve_info, "fragments", []),
     )
 
+    def custom_json(obj):
+        return getattr(obj, "__dict__", obj)
+
     # FIXME: support IN for multiple values -> WHERE
-    arg_string = re.sub(r"\"([^(\")]+)\":", "\\1:", json.dumps(kwargs))
+    arg_string = re.sub(
+        r"\"([^(\")]+)\":", "\\1:", json.dumps(kwargs, default=custom_json)
+    )
 
     id_where_predicate = f"WHERE ID({variable_name})={_id} " if _id is not None else ""
     outer_skip_limit = f'SKIP {offset}{" LIMIT " + str(first) if first > -1 else ""}'
 
     cyp_dir = cypher_directive(
-        resolve_info.schema.mutation_type, resolve_info.field_name
+        resolve_info.schema.get_type_by_name("Mutation"), resolve_info.field_name
     )
     if cyp_dir:
         custom_cypher = cyp_dir.get("statement")
