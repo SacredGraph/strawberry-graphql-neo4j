@@ -3,7 +3,14 @@ import json
 import logging
 from typing import Any
 from pydash import find, reduce_
-from graphql import GraphQLResolveInfo, GraphQLScalarType, parse, build_ast_schema
+from graphql import (
+    GraphQLResolveInfo,
+    GraphQLScalarType,
+    GraphQLEnumType,
+    parse,
+    build_ast_schema,
+)
+from collections.abc import Iterable
 
 logger = logging.getLogger("neo4j_graphql_py")
 
@@ -72,8 +79,10 @@ def parse_args(args, variable_values):
 
 def get_default_arguments(field_name, schema_type):
     # get default arguments for this field from schema
-    args = schema_type.fields[field_name].args
-    return {arg_name: arg.default_value for arg_name, arg in args.items()}
+    # print(f"schema_type: {field_name} {schema_type.get_field(field_name).arguments}")
+    # args = schema_type.get_field(field_name).arguments
+    # return {arg_name: arg.default_value for arg_name, arg in args}
+    return {}
 
 
 def cypher_directive_args(variable, head_selection, schema_type, resolve_info):
@@ -113,19 +122,23 @@ def is_add_relationship_mutation(resolve_info):
 
 
 def type_identifiers(return_type):
-    type_name = str(inner_type(return_type))
+    type_name = inner_type(return_type).__name__
     return {"variable_name": low_first_letter(type_name), "type_name": type_name}
 
 
 def is_graphql_scalar_type(field_type):
-    return (
-        type(field_type).__name__ == "GraphQLScalarType"
-        or type(field_type).__name__ == "GraphQLEnumType"
+    print(
+        f"getattr(field_type, 'directives', None): {getattr(field_type, 'directives', None)}"
     )
+    return getattr(field_type, "directives", None) is None
+    # return not getattr(field_type, 'of_type', None) and ((getattr(field_type, '__name__', None) == None or getattr(field_type, '__name__', None) == 'GraphQLScalarType' or getattr(field_type, '__name__', None) == 'GraphQLEnumType'))
 
 
 def is_array_type(field_type):
-    return str(field_type).startswith("[")
+    return (
+        getattr(field_type.__class__, "__name__", "").startswith("StrawberryList")
+        or getattr(field_type.__class__, "__name__", "") == "list"
+    )
 
 
 def low_first_letter(word):
@@ -144,12 +157,12 @@ def directive_with_args(directive_name, *args):
     def fun(schema_type, field_name):
         def field_directive(schema_type, field_name, directive_name):
             return find(
-                schema_type.fields[field_name].ast_node.directives,
-                lambda d: d.name.value == directive_name,
+                getattr(schema_type.get_field(field_name), "directives", []),
+                lambda d: d.__class__.__name__.lower() == directive_name,
             )
 
         def directive_argument(directive, name):
-            return find(directive.arguments, lambda a: a.name.value == name).value.value
+            return getattr(directive, name)
 
         directive = field_directive(schema_type, field_name, directive_name)
         ret = {}
