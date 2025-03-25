@@ -9,7 +9,7 @@ from shutil import rmtree
 from setuptools import setup, Command, find_packages
 
 # Package meta-data.
-NAME = "strawberry-graphql-neo4j"
+NAME = "strawberry_graphql_neo4j"
 DESCRIPTION = (
     "A GraphQL to Cypher query execution layer for Neo4j and Strawberry GraphQL."
 )
