@@ -1,10 +1,10 @@
 import uvicorn
 from neo4j import GraphDatabase
 from ariadne.asgi import GraphQL
-from neo4j_graphql_py import neo4j_graphql
+from strawberry_graphql_neo4j import neo4j_graphql
 from ariadne import QueryType, make_executable_schema, MutationType
 
-typeDefs = '''
+typeDefs = """
 directive @cypher(statement: String!) on FIELD_DEFINITION
 directive @relation(name:String!, direction:String!) on FIELD_DEFINITION
 type Movie {
@@ -76,20 +76,20 @@ type Mutation {
   CreateMovie(movieId: ID!, title: String, year: Int, plot: String, poster: String, imdbRating: Float): Movie
   AddMovieGenre(movieId: ID!, name: String): Movie @MutationMeta(relationship: "IN_GENRE", from:"Movie", to:"Genre")
 }
-'''
+"""
 query = QueryType()
 mutation = MutationType()
 
 
-@query.field('Movie')
-@query.field('MoviesByYear')
-@query.field('AllMovies')
-@query.field('MovieById')
-@query.field('GenresBySubstring')
-@query.field('Books')
-@mutation.field('CreateGenre')
-@mutation.field('CreateMovie')
-@mutation.field('AddMovieGenre')
+@query.field("Movie")
+@query.field("MoviesByYear")
+@query.field("AllMovies")
+@query.field("MovieById")
+@query.field("GenresBySubstring")
+@query.field("Books")
+@mutation.field("CreateGenre")
+@mutation.field("CreateMovie")
+@mutation.field("AddMovieGenre")
 def resolve(obj, info, **kwargs):
     return neo4j_graphql(obj, info.context, info, True, **kwargs)
 
@@ -102,9 +102,11 @@ driver = None
 def context(request):
     global driver
     if driver is None:
-        driver = GraphDatabase.driver("bolt://localhost:7687", auth=("neo4j", "neo4j123"))
+        driver = GraphDatabase.driver(
+            "bolt://localhost:7687", auth=("neo4j", "neo4j123")
+        )
 
-    return {'driver': driver, 'request': request}
+    return {"driver": driver, "request": request}
 
 
 root_value = {}

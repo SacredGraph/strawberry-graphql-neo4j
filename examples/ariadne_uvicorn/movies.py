@@ -1,9 +1,9 @@
 import neo4j
 import uvicorn
 from ariadne.asgi import GraphQL
-from neo4j_graphql_py import neo4j_graphql, make_executable_schema
+from strawberry_graphql_neo4j import neo4j_graphql, make_executable_schema
 
-typeDefs = '''
+typeDefs = """
 directive @cypher(statement: String!) on FIELD_DEFINITION
 directive @relation(name:String!, direction:String!) on FIELD_DEFINITION
 type Movie {
@@ -27,13 +27,17 @@ type Query {
   MoviesByYear(year: Int): [Movie]
   Hello: String
 }
-'''
+"""
 
 resolvers = {
     # root entry point to GraphQL service
-    'Query': {
-        'Movie': lambda obj, info, **kwargs: neo4j_graphql(obj, info.context, info, **kwargs),
-        'MoviesByYear': lambda obj, info, **kwargs: neo4j_graphql(obj, info.context, info, **kwargs)
+    "Query": {
+        "Movie": lambda obj, info, **kwargs: neo4j_graphql(
+            obj, info.context, info, **kwargs
+        ),
+        "MoviesByYear": lambda obj, info, **kwargs: neo4j_graphql(
+            obj, info.context, info, **kwargs
+        ),
     }
 }
 
@@ -45,9 +49,11 @@ driver = None
 def context(request):
     global driver
     if driver is None:
-        driver = neo4j.GraphDatabase.driver("bolt://localhost:7687", auth=("neo4j", "neo4j123"))
+        driver = neo4j.GraphDatabase.driver(
+            "bolt://localhost:7687", auth=("neo4j", "neo4j123")
+        )
 
-    return {'driver': driver, 'request': request}
+    return {"driver": driver, "request": request}
 
 
 root_value = {}
