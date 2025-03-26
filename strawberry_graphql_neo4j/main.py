@@ -42,7 +42,19 @@ def neo4j_graphql(obj, context, resolve_info, debug=False, **kwargs):
         logger.info(kwargs)
 
     with context.get("driver").session() as session:
-        data = session.run(query, **kwargs)
+
+        def convert_kwargs(value):
+            if hasattr(value, "__dict__"):
+                return convert_kwargs(value.__dict__)
+            elif isinstance(value, dict):
+                return {k: convert_kwargs(v) for k, v in value.items() if v is not None}
+            elif isinstance(value, (list, tuple)):
+                return [convert_kwargs(item) for item in value if item is not None]
+            return value
+
+        converted_kwargs = convert_kwargs(kwargs)
+
+        data = session.run(query, **converted_kwargs)
         data = extract_query_result(data, resolve_info.return_type)
 
         def initialize_type(type_def, value):
