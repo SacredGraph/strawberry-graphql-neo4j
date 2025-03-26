@@ -45,6 +45,11 @@ def neo4j_graphql(obj, context, resolve_info, debug=False, **kwargs):
 
         def convert_kwargs(value):
             if hasattr(value, "__dict__"):
+                if hasattr(value, "__class__") and hasattr(
+                    value.__class__, "__members__"
+                ):
+                    # This is likely an enum, don't convert it
+                    return value
                 return convert_kwargs(value.__dict__)
             elif isinstance(value, dict):
                 return {k: convert_kwargs(v) for k, v in value.items() if v is not None}
