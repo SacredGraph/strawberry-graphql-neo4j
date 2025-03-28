@@ -177,7 +177,7 @@ def cypher_mutation(context, resolve_info, first=-1, offset=0, _id=None, **kwarg
 
     # FIXME: support IN for multiple values -> WHERE
     arg_string = re.sub(
-        r"\"([^(\")]+)\":", "\\1:", json.dumps(kwargs, default=custom_json)
+        r"(?<!\\)\"([^(\")]+)\":", "\\1:", json.dumps(kwargs, default=custom_json)
     )
 
     id_where_predicate = f"WHERE ID({variable_name})={_id} " if _id is not None else ""
