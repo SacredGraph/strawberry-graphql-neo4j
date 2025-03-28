@@ -17,6 +17,7 @@ from .utils import (
 )
 from collections.abc import Iterable
 from dataclasses import fields
+from datetime import datetime
 
 logger = logging.getLogger("neo4j_graphql_py")
 logger.setLevel(logging.DEBUG)
@@ -173,12 +174,15 @@ def cypher_mutation(context, resolve_info, first=-1, offset=0, _id=None, **kwarg
     )
 
     def custom_json(obj):
+        if isinstance(obj, datetime):
+            return f"datetime({obj.isoformat()})"
+
         return getattr(obj, "__dict__", obj)
 
     # FIXME: support IN for multiple values -> WHERE
-    arg_string = re.sub(
-        r"(?<!\\)\"([^(\")]+)\":", "\\1:", json.dumps(kwargs, default=custom_json)
-    )
+    arg_string = json.dumps(kwargs, default=custom_json)
+    arg_string = re.sub(r"(?<!\\)\"([^(\")]+)\":", "\\1:", arg_string)
+    arg_string = re.sub(r"\"datetime\(([^)]+)\)\"", 'datetime("\\1")', arg_string)
 
     id_where_predicate = f"WHERE ID({variable_name})={_id} " if _id is not None else ""
     outer_skip_limit = f'SKIP {offset}{" LIMIT " + str(first) if first > -1 else ""}'
