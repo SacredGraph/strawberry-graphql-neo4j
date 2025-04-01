@@ -59,6 +59,8 @@ def parse_args(args, variable_values):
     if args is None or len(args) == 0:
         return {}
 
+    print(f"arg.value: {[arg.value for arg in args]}")
+
     return {
         arg.name.value: (
             int(arg.value.value)
@@ -69,7 +71,11 @@ def parse_args(args, variable_values):
                 else (
                     variable_values[arg.name.value]
                     if arg.value.kind == "variable"
-                    else arg.value.value
+                    else (
+                        [v.value for v in arg.value.values]
+                        if arg.value.kind == "list_value"
+                        else arg.value.value
+                    )
                 )
             )
         )
