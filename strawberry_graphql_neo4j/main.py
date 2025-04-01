@@ -125,10 +125,16 @@ def cypher_query(context, resolve_info, first=-1, offset=0, _id=None, **kwargs):
     #     # FIXME: why aren't the selections found in the filteredFieldNode?
     #     selections = extract_selections(resolve_info.operation.selection_set.selections, resolve_info.fragments)
 
-    print(f"kwargs: {kwargs}")
+    def custom_json(obj):
+        if isinstance(obj, datetime):
+            return f"datetime({obj.isoformat()})"
+
+        return getattr(obj, "__dict__", obj)
 
     # FIXME: support IN for multiple values -> WHERE
-    arg_string = re.sub(r"\"([^(\")]+)\":", "\\1:", json.dumps(kwargs))
+    arg_string = json.dumps(kwargs, default=custom_json)
+    arg_string = re.sub(r"(?<!\\)\"([^(\")]+)\":", "\\1:", arg_string)
+    arg_string = re.sub(r"\"datetime\(([^)]+)\)\"", "datetime(\"\\1\")", arg_string)
 
     id_where_predicate = f"WHERE ID({variable_name})={_id} " if _id is not None else ""
     outer_skip_limit = f'SKIP {offset}{" LIMIT " + str(first) if first > -1 else ""}'
@@ -182,7 +188,7 @@ def cypher_mutation(context, resolve_info, first=-1, offset=0, _id=None, **kwarg
     # FIXME: support IN for multiple values -> WHERE
     arg_string = json.dumps(kwargs, default=custom_json)
     arg_string = re.sub(r"(?<!\\)\"([^(\")]+)\":", "\\1:", arg_string)
-    arg_string = re.sub(r"\"datetime\(([^)]+)\)\"", 'datetime("\\1")', arg_string)
+    arg_string = re.sub(r"\"datetime\(([^)]+)\)\"", "datetime(\"\\1\")", arg_string)
 
     id_where_predicate = f"WHERE ID({variable_name})={_id} " if _id is not None else ""
     outer_skip_limit = f'SKIP {offset}{" LIMIT " + str(first) if first > -1 else ""}'
