@@ -59,8 +59,6 @@ def parse_args(args, variable_values):
     if args is None or len(args) == 0:
         return {}
 
-    print(f"arg.value: {[arg.value for arg in args]}")
-
     return {
         arg.name.value: (
             int(arg.value.value)
@@ -91,11 +89,38 @@ def get_default_arguments(field_name, schema_type):
     return {}
 
 
-def cypher_directive_args(variable, head_selection, schema_type, resolve_info):
+def extract_cypher_variables(custom_cypher):
+    """
+    Extract variables of the form $variable_name from a Cypher query.
+    Returns a dictionary with variable names as keys and None as default values.
+    """
+    if not custom_cypher:
+        return {}
+
+    # Find all occurrences of $variable_name in the Cypher query
+    variable_pattern = r"\$([a-zA-Z_][a-zA-Z0-9_]*)"
+    variables = re.findall(variable_pattern, custom_cypher)
+
+    # Create a dictionary with variable names as keys and None as default values
+    return {var: None for var in variables}
+
+
+def cypher_directive_args(
+    variable, head_selection, schema_type, resolve_info, custom_cypher=None
+):
     default_args = get_default_arguments(head_selection.name.value, schema_type)
     schema_args = {}
+
+    # Extract variables from custom Cypher query if provided
+    cypher_vars = extract_cypher_variables(custom_cypher)
+
     query_args = parse_args(head_selection.arguments, resolve_info.variable_values)
+
+    # Update with Cypher variables first (they have None as default)
+    default_args.update(cypher_vars)
+    # Then update with query arguments (which may override the None values)
     default_args.update(query_args)
+
     args = re.sub(r"\"([^(\")]+)\":", "\\1:", json.dumps(default_args))
     return (
         f"{{this: {variable}{args[1:]}"
@@ -134,9 +159,6 @@ def type_identifiers(return_type):
 
 
 def is_graphql_scalar_type(field_type):
-    print(
-        f"getattr(field_type, 'directives', None): {getattr(field_type, 'directives', None)}"
-    )
     return getattr(field_type, "directives", None) is None
     # return not getattr(field_type, 'of_type', None) and ((getattr(field_type, '__name__', None) == None or getattr(field_type, '__name__', None) == 'GraphQLScalarType' or getattr(field_type, '__name__', None) == 'GraphQLEnumType'))
 
@@ -292,5 +314,4 @@ def fix_params_for_add_relationship_mutation(resolve_info, **kwargs):
         .ast_node.arguments[1]
         .name.value
     ]
-    print(kwargs)
     return kwargs

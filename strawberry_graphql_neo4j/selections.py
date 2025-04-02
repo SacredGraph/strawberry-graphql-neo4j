@@ -63,7 +63,7 @@ def build_cypher_selection(
             return build_cypher_selection(
                 (
                     f'{initial}{field_name}: apoc.cypher.runFirstColumnSingle("{custom_cypher}", '
-                    f"{cypher_directive_args(variable_name, head_selection, schema_type, resolve_info)})"
+                    f"{cypher_directive_args(variable_name, head_selection, schema_type, resolve_info, custom_cypher)})"
                     f"{comma_if_tail}"
                 ),
                 **tail_params,
@@ -102,7 +102,7 @@ def build_cypher_selection(
             (
                 f'{initial}{field_name}: {"" if field_is_list else "head("}'
                 f'[ {nested_variable} IN apoc.cypher.runFirstColumnMany("{custom_cypher}", '
-                f"{cypher_directive_args(variable_name, head_selection, schema_type, resolve_info)}) | {nested_variable} "
+                f"{cypher_directive_args(variable_name, head_selection, schema_type, resolve_info, custom_cypher)}) | {nested_variable} "
                 f"{{{build_cypher_selection(**nested_params)}}}]"
                 f'{"" if field_is_list else ")"}{skip_limit} {comma_if_tail}'
             ),

@@ -39,8 +39,8 @@ def neo4j_graphql(obj, context, resolve_info, debug=False, **kwargs):
         query = cypher_query(context, resolve_info, **kwargs)
 
     if debug:
-        logger.info(query)
-        logger.info(kwargs)
+        print(f"query: {query}")
+        print(f"kwargs: {kwargs}")
 
     with context.get("driver").session() as session:
 
@@ -134,7 +134,7 @@ def cypher_query(context, resolve_info, first=-1, offset=0, _id=None, **kwargs):
     # FIXME: support IN for multiple values -> WHERE
     arg_string = json.dumps(kwargs, default=custom_json)
     arg_string = re.sub(r"(?<!\\)\"([^(\")]+)\":", "\\1:", arg_string)
-    arg_string = re.sub(r"\"datetime\(([^)]+)\)\"", "datetime(\"\\1\")", arg_string)
+    arg_string = re.sub(r"\"datetime\(([^)]+)\)\"", 'datetime("\\1")', arg_string)
 
     id_where_predicate = f"WHERE ID({variable_name})={_id} " if _id is not None else ""
     outer_skip_limit = f'SKIP {offset}{" LIMIT " + str(first) if first > -1 else ""}'
@@ -188,7 +188,7 @@ def cypher_mutation(context, resolve_info, first=-1, offset=0, _id=None, **kwarg
     # FIXME: support IN for multiple values -> WHERE
     arg_string = json.dumps(kwargs, default=custom_json)
     arg_string = re.sub(r"(?<!\\)\"([^(\")]+)\":", "\\1:", arg_string)
-    arg_string = re.sub(r"\"datetime\(([^)]+)\)\"", "datetime(\"\\1\")", arg_string)
+    arg_string = re.sub(r"\"datetime\(([^)]+)\)\"", 'datetime("\\1")', arg_string)
 
     id_where_predicate = f"WHERE ID({variable_name})={_id} " if _id is not None else ""
     outer_skip_limit = f'SKIP {offset}{" LIMIT " + str(first) if first > -1 else ""}'
