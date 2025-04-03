@@ -11,6 +11,7 @@ from graphql import (
     build_ast_schema,
 )
 from collections.abc import Iterable
+from datetime import datetime
 
 logger = logging.getLogger("neo4j_graphql_py")
 
@@ -121,11 +122,20 @@ def cypher_directive_args(
     # Then update with query arguments (which may override the None values)
     default_args.update(query_args)
 
-    args = re.sub(r"\"([^(\")]+)\":", "\\1:", json.dumps(default_args))
+    def custom_json(obj):
+        if isinstance(obj, datetime):
+            return f"datetime({obj.isoformat()})"
+
+        return getattr(obj, "__dict__", obj)
+
+    # FIXME: support IN for multiple values -> WHERE
+    arg_string = json.dumps(default_args, default=custom_json)
+    arg_string = re.sub(r"(?<!\\)\"([^(\")]+)\":", "\\1:", arg_string)
+    arg_string = re.sub(r"\"datetime\(([^)]+)\)\"", 'datetime("\\1")', arg_string)
     return (
-        f"{{this: {variable}{args[1:]}"
-        if args == "{}"
-        else f"{{this: {variable}, {args[1:]}"
+        f"{{this: {variable}{arg_string[1:]}"
+        if arg_string == "{}"
+        else f"{{this: {variable}, {arg_string[1:]}"
     )
 
 
