@@ -118,7 +118,7 @@ def cypher_query(context, resolve_info, first=-1, offset=0, _id=None, **kwargs):
 
     # FIXME: how to handle multiple field_node matches
     selections = extract_selections(
-        filtered_field_nodes[0].selection_set.selections, []
+        getattr(filtered_field_nodes[0].selection_set, "selections", []), []
     )  # resolve_info.fragments)
 
     # if len(selections) == 0:
@@ -144,20 +144,22 @@ def cypher_query(context, resolve_info, first=-1, offset=0, _id=None, **kwargs):
     )
     if cyp_dir:
         custom_cypher = cyp_dir.get("statement")
-        query = (
-            f'WITH apoc.cypher.runFirstColumnMany("{custom_cypher}", {arg_string}) AS x '
-            f"UNWIND x AS {variable_name} RETURN {variable_name} "
-            f'{{{build_cypher_selection("", selections, variable_name, schema_type, resolve_info)}}} '
-            f"AS {variable_name} {outer_skip_limit}"
-        )
+        query = f'WITH apoc.cypher.runFirstColumnMany("{custom_cypher}", {arg_string}) AS x '
+        query += f"UNWIND x AS {variable_name} RETURN {variable_name} "
+
+        if selections:
+            query += f'{{{build_cypher_selection("", selections, variable_name, schema_type, resolve_info)}}} '
+
+        query += f"AS {variable_name} {outer_skip_limit}"
     else:
         # No @cypher directive on QueryType
         query = f"MATCH ({variable_name}:{type_name} {arg_string}) {id_where_predicate}"
-        query += (
-            f"RETURN {variable_name} "
-            f'{{{build_cypher_selection("", selections, variable_name, schema_type, resolve_info)}}}'
-            f" AS {variable_name} {outer_skip_limit}"
-        )
+        query += f"RETURN {variable_name} "
+
+        if selections:
+            query += f'{{{build_cypher_selection("", selections, variable_name, schema_type, resolve_info)}}}'
+
+        query += f" AS {variable_name} {outer_skip_limit}"
 
     return query
 
@@ -198,12 +200,14 @@ def cypher_mutation(context, resolve_info, first=-1, offset=0, _id=None, **kwarg
     )
     if cyp_dir:
         custom_cypher = cyp_dir.get("statement")
-        query = (
-            f'CALL apoc.cypher.doIt("{custom_cypher}", {arg_string}) YIELD value '
-            f"WITH apoc.map.values(value, [keys(value)[0]])[0] AS {variable_name} "
-            f'RETURN {variable_name} {{{build_cypher_selection("", selections, variable_name, schema_type, resolve_info)}}} '
-            f"AS {variable_name} {outer_skip_limit}"
-        )
+        query = f'CALL apoc.cypher.doIt("{custom_cypher}", {arg_string}) YIELD value '
+        query += f"WITH apoc.map.values(value, [keys(value)[0]])[0] AS {variable_name} "
+        query += f"RETURN {variable_name} "
+
+        if selections:
+            query += f'{{{build_cypher_selection("", selections, variable_name, schema_type, resolve_info)}}} '
+
+        query += f"AS {variable_name} {outer_skip_limit}"
     # No @cypher directive on MutationType
     elif resolve_info.field_name.startswith(
         "create"
@@ -212,11 +216,10 @@ def cypher_mutation(context, resolve_info, first=-1, offset=0, _id=None, **kwarg
         # TODO: handle for create relationship
         # TODO: update / delete
         # TODO: augment schema
-        query = (
-            f"CREATE ({variable_name}:{type_name}) SET {variable_name} = $params RETURN {variable_name} "
-            f'{{{build_cypher_selection("", selections, variable_name, schema_type, resolve_info)}}} '
-            f"AS {variable_name}"
-        )
+        query = f"CREATE ({variable_name}:{type_name}) SET {variable_name} = $params RETURN {variable_name} "
+        if selections:
+            query += f'{{{build_cypher_selection("", selections, variable_name, schema_type, resolve_info)}}} '
+        query += f"AS {variable_name}"
     elif resolve_info.field_name.startswith(
         "add"
     ) or resolve_info.field_name.startswith("Add"):
@@ -240,16 +243,14 @@ def cypher_mutation(context, resolve_info, first=-1, offset=0, _id=None, **kwarg
             .ast_node.arguments[1]
             .name.value[len(to_var) :]
         )
-        query = (
-            f"MATCH ({from_var}:{from_type} {{{from_param}: "
-            f"${resolve_info.schema.get_type_by_name('Mutation').fields[resolve_info.field_name].ast_node.arguments[0].name.value}}}) "
-            f"MATCH ({to_var}:{to_type} {{{to_param}: "
-            f"${resolve_info.schema.get_type_by_name('Mutation').fields[resolve_info.field_name].ast_node.arguments[1].name.value}}}) "
-            f"CREATE ({from_var})-[:{relation_name}]->({to_var}) "
-            f"RETURN {from_var} "
-            f'{{{build_cypher_selection("", selections, variable_name, schema_type, resolve_info)}}} '
-            f"AS {from_var}"
-        )
+        query = f"MATCH ({from_var}:{from_type} {{{from_param}: "
+        query += f"MATCH ({to_var}:{to_type} {{{to_param}: "
+        query += f"${resolve_info.schema.get_type_by_name('Mutation').fields[resolve_info.field_name].ast_node.arguments[1].name.value}}}) "
+        query += f"CREATE ({from_var})-[:{relation_name}]->({to_var}) "
+        query += f"RETURN {from_var} "
+        if selections:
+            query += f'{{{build_cypher_selection("", selections, variable_name, schema_type, resolve_info)}}} '
+        query += f"AS {from_var}"
     else:
         raise Exception("Mutation does not follow naming conventions")
     return query
