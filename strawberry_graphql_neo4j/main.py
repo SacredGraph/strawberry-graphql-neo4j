@@ -49,9 +49,14 @@ def neo4j_graphql(obj, context, resolve_info, debug=False, **kwargs):
                 if hasattr(value, "__class__") and hasattr(
                     value.__class__, "__members__"
                 ):
-                    # This is likely an enum, don't convert it
-                    return value
-                return convert_kwargs(value.__dict__)
+                    # This is an enum, return its value
+                    return value.value
+                # Process all attributes of the object
+                result = {}
+                for attr_name, attr_value in value.__dict__.items():
+                    if attr_value is not None:
+                        result[attr_name] = convert_kwargs(attr_value)
+                return result
             elif isinstance(value, dict):
                 return {k: convert_kwargs(v) for k, v in value.items() if v is not None}
             elif isinstance(value, (list, tuple)):
@@ -59,6 +64,9 @@ def neo4j_graphql(obj, context, resolve_info, debug=False, **kwargs):
             return value
 
         converted_kwargs = convert_kwargs(kwargs)
+
+        print(f"kwargs: {kwargs}")
+        print(f"converted_kwargs: {converted_kwargs}")
 
         data = session.run(query, **converted_kwargs)
         data = extract_query_result(data, resolve_info.return_type)
@@ -180,6 +188,8 @@ def cypher_mutation(context, resolve_info, first=-1, offset=0, _id=None, **kwarg
         getattr(filtered_field_nodes[0].selection_set, "selections", []),
         getattr(resolve_info, "fragments", []),
     )
+
+    print(f"selections: {selections}")
 
     def custom_json(obj):
         if isinstance(obj, datetime):
