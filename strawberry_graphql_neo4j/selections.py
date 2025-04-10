@@ -79,12 +79,12 @@ def build_cypher_selection(
             var += f"[({variable_name}){'<' if rel_direction in ['in', 'IN'] else ''}"
             var += f"-[:{rel_type}]-{'>' if rel_direction in ['out', 'OUT'] else ''}"
             var += f"({nested_variable}:{inner_schema_type.origin.__name__} {subquery_args}) | {nested_variable} "
-            
+
             cypher_selection = build_cypher_selection(**nested_params)
             if cypher_selection:
-                var += f"{{{cypher_selection}}}]"
-            
-            var += f"{')' if not is_array_type(field_type) else ''}{skip_limit} {comma_if_tail}"
+                var += f"{{{cypher_selection}}}"
+
+            var += f"]{')' if not is_array_type(field_type) else ''}{skip_limit} {comma_if_tail}"
 
             return build_cypher_selection(
                 var,
@@ -103,13 +103,15 @@ def build_cypher_selection(
         field_is_list = not not getattr(field_type, "of_type", None)
 
         var = f'{initial}{field_name}: {"" if field_is_list else "head("}'
-        var += f'[ {nested_variable} IN apoc.cypher.runFirstColumnMany("{custom_cypher}", '
+        var += (
+            f'[ {nested_variable} IN apoc.cypher.runFirstColumnMany("{custom_cypher}", '
+        )
         var += f"{cypher_directive_args(variable_name, head_selection, schema_type, resolve_info, custom_cypher)}) | {nested_variable} "
-        
+
         cypher_selection = build_cypher_selection(**nested_params)
         if cypher_selection:
             var += f"{{{cypher_selection}}}"
-        
+
         var += f"]{')' if not field_is_list else ''}{skip_limit} {comma_if_tail}"
 
         return build_cypher_selection(
@@ -125,15 +127,21 @@ def build_cypher_selection(
     subquery_args = inner_filter_params(head_selection)
 
     if rel_type is None:
-        cypher_selection = build_cypher_selection( initial='', selections=getattr(head_selection.selection_set, 'selections', []), variable_name=field_name, schema_type=inner_schema_type, resolve_info=resolve_info)
+        cypher_selection = build_cypher_selection(
+            initial="",
+            selections=getattr(head_selection.selection_set, "selections", []),
+            variable_name=field_name,
+            schema_type=inner_schema_type,
+            resolve_info=resolve_info,
+        )
 
         var = f"{initial} {field_name}: {'head(' if not is_array_type(field_type) else ''}[{field_name} in {variable_name}.{field_name} | {field_name} "
-        
+
         if cypher_selection:
-            var += f"{{{ cypher_selection  }}}"
-            
+            var += f"{{{ cypher_selection }}}"
+
         var += f"]{')' if not is_array_type(field_type) else ''}{skip_limit} {comma_if_tail}"
-            
+
         return build_cypher_selection(
             var,
             **tail_params,
@@ -147,7 +155,9 @@ def build_cypher_selection(
     var += f"({nested_variable}:{inner_schema_type.origin.__name__} {subquery_args}) | {nested_variable} "
     if cypher_selection:
         var += f"{{{cypher_selection}}}"
-    var += f"{')' if not is_array_type(field_type) else ''}{skip_limit} {comma_if_tail}"
+    var += (
+        f"]{')' if not is_array_type(field_type) else ''}{skip_limit} {comma_if_tail}"
+    )
 
     return build_cypher_selection(
         var,
