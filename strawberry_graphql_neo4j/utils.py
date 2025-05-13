@@ -1,17 +1,19 @@
-import re
 import json
 import logging
-from typing import Any
-from pydash import find, reduce_
-from graphql import (
-    GraphQLResolveInfo,
-    GraphQLScalarType,
-    GraphQLEnumType,
-    parse,
-    build_ast_schema,
-)
+import re
 from collections.abc import Iterable
 from datetime import datetime
+from typing import Any
+
+from graphql import (
+    GraphQLEnumType,
+    GraphQLResolveInfo,
+    GraphQLScalarType,
+    build_ast_schema,
+    parse,
+)
+from pydash import find, reduce_
+from strawberry.utils.typing import is_list, is_optional
 
 logger = logging.getLogger("neo4j_graphql_py")
 
@@ -173,10 +175,20 @@ def is_graphql_scalar_type(field_type):
     # return not getattr(field_type, 'of_type', None) and ((getattr(field_type, '__name__', None) == None or getattr(field_type, '__name__', None) == 'GraphQLScalarType' or getattr(field_type, '__name__', None) == 'GraphQLEnumType'))
 
 
+def unpack_optional(field_type):
+    if getattr(field_type.__class__, "__name__", "").startswith("StrawberryOptional"):
+        return field_type.of_type.__class__
+    return field_type
+
+
 def is_array_type(field_type):
+    unpacked_field_type = unpack_optional(field_type)
+
     return (
-        getattr(field_type.__class__, "__name__", "").startswith("StrawberryList")
-        or getattr(field_type.__class__, "__name__", "") == "list"
+        getattr(unpacked_field_type.__class__, "__name__", "").startswith(
+            "StrawberryList"
+        )
+        or getattr(unpacked_field_type.__class__, "__name__", "") == "list"
     )
 
 

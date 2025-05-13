@@ -1,23 +1,26 @@
-import re
 import json
 import logging
-from pydash import filter_
-from .selections import build_cypher_selection
-from .utils import (
-    is_mutation,
-    is_add_relationship_mutation,
-    type_identifiers,
-    low_first_letter,
-    cypher_directive,
-    mutation_meta_directive,
-    extract_query_result,
-    extract_selections,
-    fix_params_for_add_relationship_mutation,
-    is_array_type,
-)
+import re
 from collections.abc import Iterable
 from dataclasses import fields
 from datetime import datetime
+
+from pydash import filter_
+from strawberry.utils.typing import is_list
+
+from .selections import build_cypher_selection
+from .utils import (
+    cypher_directive,
+    extract_query_result,
+    extract_selections,
+    fix_params_for_add_relationship_mutation,
+    is_add_relationship_mutation,
+    is_array_type,
+    is_mutation,
+    low_first_letter,
+    mutation_meta_directive,
+    type_identifiers,
+)
 
 logger = logging.getLogger("neo4j_graphql_py")
 logger.setLevel(logging.DEBUG)
@@ -64,9 +67,6 @@ def neo4j_graphql(obj, context, resolve_info, debug=False, **kwargs):
             return value
 
         converted_kwargs = convert_kwargs(kwargs)
-
-        print(f"kwargs: {kwargs}")
-        print(f"converted_kwargs: {converted_kwargs}")
 
         data = session.run(query, **converted_kwargs)
         data = extract_query_result(data, resolve_info.return_type)
@@ -188,8 +188,6 @@ def cypher_mutation(context, resolve_info, first=-1, offset=0, _id=None, **kwarg
         getattr(filtered_field_nodes[0].selection_set, "selections", []),
         getattr(resolve_info, "fragments", []),
     )
-
-    print(f"selections: {selections}")
 
     def custom_json(obj):
         if isinstance(obj, datetime):
